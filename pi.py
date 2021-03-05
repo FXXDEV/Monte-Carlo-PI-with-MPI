@@ -7,8 +7,11 @@ matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 import sys
 
+real_pi = np.pi
+
 def estimatePi(n, block=100000):
     #block = n de iteracoes
+    #n = tentativas por trabalhadores
 
     # Retorna uma estimativa de pi atraves da insercao de N numeros randomicos em 
     # um quadrado [[-1,1]],[-1,1]] e calcula qual fracao fica dentro do circulo unitario
@@ -25,6 +28,8 @@ def estimatePi(n, block=100000):
         number_in_circle = np.sum(inCircle(points))
         total_number += number_in_circle
         i += block
+
+    #como a area de um quadrante do circulo  pi/4, multiplicamos a razao n/N por 4
     return (4.*total_number)/n
 
 def estimatePiParallel(comm, N):
@@ -84,6 +89,7 @@ def inCircle(p):
 def printToFile(estimates):
     plt.figure()
     plt.errorbar(np.log2(estimates[:,0]), estimates[:,1], yerr=estimates[:,2])
+    plt.plot(real_pi)
     plt.ylabel('Estimativa numero PI')
     plt.xlabel('Tentativas N (log2)')
     plt.savefig('avg-PI-vs-Trys.png')
@@ -98,9 +104,11 @@ def printToFile(estimates):
 
 if __name__ == '__main__':
     comm = MPI.COMM_WORLD
-    size = comm.Get_size()
-    rank = comm.Get_rank()
-    
+    size = comm.Get_size() #numero de processos no calculo atual
+    rank = comm.Get_rank() #identificador atribuido ao processo atual
+
+    print("Valor aproximado de PI: ",real_pi)
+
     #Balancear execucoes por comunicadores
     executions_total = 64 # 64 execucoes independentes para cada N 
     executions_per_workers = executions_total // size
