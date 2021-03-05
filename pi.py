@@ -3,6 +3,8 @@ from __future__ import print_function, division
 import numpy as np
 from mpi4py import MPI
 import matplotlib
+import math as ma
+import random
 matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 import sys
@@ -11,7 +13,6 @@ real_pi = np.pi
 
 def estimatePi(n, block=100000):
     #block = n de iteracoes
-    #n = tentativas por trabalhadores
 
     # Retorna uma estimativa de pi atraves da insercao de N numeros randomicos em 
     # um quadrado [[-1,1]],[-1,1]] e calcula qual fracao fica dentro do circulo unitario
@@ -25,11 +26,9 @@ def estimatePi(n, block=100000):
         if n-i < block:
             block = n-i
         points = genPoints(block)
-        number_in_circle = np.sum(inCircle(points))
-        total_number += number_in_circle
+        #Somatoria de numeros dentro do circulo
+        total_number += inCircle(points)
         i += block
-
-    #como a area de um quadrante do circulo  pi/4, multiplicamos a razao n/N por 4
     return (4.*total_number)/n
 
 def estimatePiParallel(comm, N):
@@ -76,15 +75,29 @@ def genPoints(n):
     # Retorna uma matriz uniforme de N pares randomicos (x,y) dentro
     # do quadrado qual o circulo esta centralizado
     # Quadrado com cantos em (-1,-1), (-1,1), (1,1), (1,-1)
-    points = 2 * np.random.random((n,2)) - 1
+    points = []
+    for i in range(0,n):
+        # Dict de valores com suas respectivas chaves
+        #Gera valores uniformemente numeros randomicos entre -1 e 1
+        values = {}
+        values["x"]= random.uniform(-1, 1)
+        values["y"]= random.uniform(-1, 1)
+        points.append(values)
     return points
 
-def inCircle(p):
-    
-    # Retorna um array booleando, passando True/False os elementos que correspondem 
-    # aos pontos dentro do circulo, dentro do quadrado. 
-    # np.linlang.norm = encontrar tamanho do vetor
-    return np.linalg.norm(p,axis=-1)<=1.0
+def inCircle(points):
+    #Pega os valores gerados do dicionario e valida se a distancia entre os dois pontos(euclidiana) é menor que 1,
+    #Se for, o valoi é valido e esta dentro do circulo do quadrado, é somado mais um ponto .
+
+    final_array = 0
+    for i in points: 
+       x = i.get('x')
+       y = i.get('y')
+       val = ma.hypot(x, y)
+       if val < 1.0:
+           final_array +=1
+                                  
+    return final_array
 
 def printToFile(estimates):
     plt.figure()
@@ -94,7 +107,6 @@ def printToFile(estimates):
     plt.xlabel('Tentativas N (log2)')
     plt.savefig('avg-PI-vs-Trys.png')
 
-    #
     plt.figure()
     plt.ylabel('Desvio Padrao PI (log2)')
     plt.xlabel('Tentativas N (log2)')
@@ -104,9 +116,9 @@ def printToFile(estimates):
 
 if __name__ == '__main__':
     comm = MPI.COMM_WORLD
-    size = comm.Get_size() #numero de processos no calculo atual
-    rank = comm.Get_rank() #identificador atribuido ao processo atual
-
+    size = comm.Get_size()#numero de processos no calculo atual
+    rank = comm.Get_rank()#identificador atribuido ao processo atual
+    
     print("Valor aproximado de PI: ",real_pi)
 
     #Balancear execucoes por comunicadores
